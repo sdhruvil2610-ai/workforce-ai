@@ -52,15 +52,12 @@ if start_workflow:
             p_text = st.empty()
             
             # We add stderr=subprocess.PIPE to catch the crash reason
+           # STEP 2: AI OPTIMIZATION
             process = subprocess.Popen(
                 [sys.executable, "-u", "solver_engine.py", 
-                 "--input", "data/input/labor_demand_curve_sim.csv", 
-                 "--output", "data/output/final_network_schedule.csv"],
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, # Added this
-                text=True, 
-                bufsize=1, 
-                universal_newlines=True
+                 "--input", "labor_demand_curve_sim.csv", # REMOVED data/input/
+                 "--output", "final_network_schedule.csv"], # REMOVED data/output/
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True
             )
             
             # This part handles the progress bar
