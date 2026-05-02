@@ -34,21 +34,23 @@ if start_workflow:
         try:
         
 # Inside your button click logic:
-st.write("📈 **Step 1:** Simulating Traffic Wave...")
+            try:
+        st.write("📈 **Step 1:** Simulating Traffic Wave...")
+        
+        # Use sys.executable to ensure the correct Python environment is used
+        result = subprocess.run(
+            [sys.executable, "demand_gen.py"], 
+            capture_output=True, 
+            text=True
+        )
 
-# We use sys.executable to ensure we use the SAME python environment
-# We use capture_output=True to grab the REAL error message
-result = subprocess.run(
-    [sys.executable, "demand_gen.py"], 
-    capture_output=True, 
-    text=True
-)
-
-if result.returncode != 0:
-    st.error("🚨 **THE PIPELINE CRASHED!**")
-    st.info("Here is the exact technical reason from the server:")
-    st.code(result.stderr) # This prints the actual Python error (Traceback)
-    st.stop()
+        if result.returncode != 0:
+            st.error("🚨 **THE PIPELINE CRASHED!**")
+            st.code(result.stderr)
+            st.stop()
+            
+    except Exception as e:
+        st.error(f"General System Error: {e}")
             
             # STEP 2: AI OPTIMIZATION
             st.write("🧠 **Step 2:** Deep AI Optimization (12s per store)...")
