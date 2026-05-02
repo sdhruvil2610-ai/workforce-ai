@@ -130,6 +130,11 @@ def run_network_optimization(demand_file):
     pd.DataFrame(optimized_records).to_csv(OUTPUT_FILE, index=False)
     print("DONE", flush=True)
 
+import os
+os.makedirs('data/output', exist_ok=True) # Forces Linux to create the folder
+# Then your save command:
+# df.to_csv('data/output/final_network_schedule.csv', index=False)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', type=str, default='labor_demand_curve_sim.csv')
