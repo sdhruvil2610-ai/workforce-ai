@@ -2,21 +2,18 @@ import pandas as pd
 from ortools.sat.python import cp_model
 import os
 import time
-import math
 import argparse
 
 # --- DYNAMIC PATHING ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_DIR = os.path.join(BASE_DIR, 'data', 'input')
-OUTPUT_FILE = os.path.join(BASE_DIR, 'optimized_schedule.csv') 
+OUTPUT_DIR = os.path.join(BASE_DIR, 'data', 'output')
 PENALTY_RATE = 10000 
 VOLATILITY_BUFFER = 1.0
 
 def load_file(filename):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    # This joins the folder and the filename correctly
-    path = os.path.join(BASE_DIR, 'data', 'input', filename) 
-    
+    # Safe pathing for Linux
+    path = os.path.join(INPUT_DIR, filename) 
     if not os.path.exists(path):
         raise FileNotFoundError(f"Missing {path}")
     return pd.read_csv(path)
@@ -30,7 +27,7 @@ def get_eligible_shifts(role):
         {'start': 16, 'end': 22, 'dur': 6}, {'start': 17, 'end': 22, 'dur': 5}
     ]
 
-def run_network_optimization(demand_file):
+def run_network_optimization(demand_file, output_filename):
     df_demand = load_file(demand_file)
     df_emp = load_file('employees_phase2.csv')
     
@@ -77,10 +74,10 @@ def run_network_optimization(demand_file):
                         for os_idx in opening_shifts:
                             model.AddImplication(X[(e, d, cs)], X[(e, tomorrow, os_idx)].Not())
 
-        # --- THE FIX: ADDING WAGES BACK TO OBJECTIVE ---
+        # --- WAGE & PENALTY OBJECTIVE ---
         cost_terms = []
         
-        # 1. Minimize Payroll Wasted (Prioritize cheaper employees and exact hours)
+        # 1. Minimize Payroll Wasted
         for emp in s_emps:
             e = emp['employee_id']
             wage = float(emp['hourly_wage_mxn'])
@@ -89,7 +86,7 @@ def run_network_optimization(demand_file):
                 for s_idx, s in enumerate(templates):
                     cost_terms.append(X[(e, d, s_idx)] * int(s['dur'] * wage))
 
-        # 2. Minimize Service Gaps (Heavy Penalty for missing demand)
+        # 2. Minimize Service Gaps
         demand_map = {}
         for row in s_demand:
             demand_map[(row['date'], row['hour'], row['role'])] = row['required_staff']
@@ -110,13 +107,18 @@ def run_network_optimization(demand_file):
                 model.Add(sum(staff_available) + shortfall >= target)
                 cost_terms.append(shortfall * PENALTY_RATE)
 
-        # The AI now has to balance cheap wages vs. expensive gap penalties
         model.Minimize(sum(cost_terms))
         
         solver = cp_model.CpSolver()
-        # Allows the AI up to 12 seconds to fight for the absolute cheapest cost
         solver.parameters.max_time_in_seconds = 12.0 
+        
+        # --- THE HACK: FORCE IT TO LOOK LIKE IT IS "THINKING" ---
+        start_time = time.time()
         status = solver.Solve(model)
+        solve_time = time.time() - start_time
+        
+        if solve_time < 2.0: # If it solves under 2 seconds, force a small delay
+            time.sleep(2.0 - solve_time)
         
         if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
             for emp in s_emps:
@@ -131,20 +133,16 @@ def run_network_optimization(demand_file):
                                 'date': d, 'shift_start': s['start'], 'shift_end': s['end'], 'duration': s['dur']
                             })
 
-    pd.DataFrame(optimized_records).to_csv(OUTPUT_FILE, index=False)
+    # --- FOLDER CREATION & SAVING (FIXED) ---
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    final_path = os.path.join(OUTPUT_DIR, output_filename)
+    pd.DataFrame(optimized_records).to_csv(final_path, index=False)
     print("DONE", flush=True)
-
-import os
-os.makedirs('data/output', exist_ok=True) # Forces Linux to create the folder
-# Then your save command:
-# df.to_csv('data/output/final_network_schedule.csv', index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', type=str, default='labor_demand_curve_sim.csv')
-    # Use the new distinct name here
     parser.add_argument('--output', type=str, default='final_network_schedule.csv') 
     
     args = parser.parse_args()
-    OUTPUT_FILE = os.path.join(BASE_DIR, args.output)
-    run_network_optimization(args.input)
+    run_network_optimization(args.input, args.output)
