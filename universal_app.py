@@ -35,10 +35,12 @@ if start_workflow:
             st.write("📈 **Step 1:** Simulating Traffic Wave & 48h Manager Baseline...")
             
             # Run demand_gen.py and catch the EXACT error if it fails
-            demand_process = subprocess.run([sys.executable, "demand_gen.py"], capture_output=True, text=True)
-            if demand_process.returncode != 0:
-                st.error(f"🚨 Crash in demand_gen.py! Exact Error:\n```text\n{demand_process.stderr}\n```")
-                st.stop()
+            # Change ['python', 'demand_gen.py'] to [sys.executable, 'demand_gen.py']
+result = subprocess.run([sys.executable, 'demand_gen.py'], capture_output=True, text=True)
+
+if result.returncode != 0:
+    st.error(f"Error: {result.stderr}") # This will show you the REAL error if it fails again
+    st.stop()
 
             # Run legacy_gen.py and catch the EXACT error if it fails
             legacy_process = subprocess.run([sys.executable, "legacy_gen.py"], capture_output=True, text=True)
