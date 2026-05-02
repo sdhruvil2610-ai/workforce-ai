@@ -117,8 +117,19 @@ def run_network_optimization(demand_file, output_filename):
         status = solver.Solve(model)
         solve_time = time.time() - start_time
         
-        if solve_time < 2.0: # If it solves under 2 seconds, force a small delay
-            time.sleep(2.0 - solve_time)
+        solver = cp_model.CpSolver()
+        # Give the AI up to 25 seconds to fight for the absolute cheapest cost
+        solver.parameters.max_time_in_seconds = 25.0 
+        
+        # --- THE HACK: FORCE IT TO LOOK LIKE IT IS "THINKING" ---
+        start_time = time.time()
+        status = solver.Solve(model)
+        solve_time = time.time() - start_time
+        
+        # If you want to force the presentation to take longer, increase the sleep timer too:
+        # This forces the app to "think" for at least 5 seconds per store if it solves it too fast.
+        if solve_time < 8.0: 
+            time.sleep(8.0 - solve_time)
         
         if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
             for emp in s_emps:
