@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import os  # Added to handle directory creation
 
 def generate_dynamic_weekly_demand():
     # 1. Load the constant store infrastructure
@@ -40,13 +41,13 @@ def generate_dynamic_weekly_demand():
             weekly_noise = np.random.uniform(0.85, 1.15)
             
             for hour in hours:
-                # Core Sinusoidal Wave[cite: 3]
+                # Core Sinusoidal Wave
                 base_traffic = 60 + 40 * np.sin(np.pi * (hour - 8) / 14)
                 
                 # Hourly Jitter: Specific hours vary randomly (+/- 10%)
                 hourly_noise = np.random.uniform(0.9, 1.1)
                 
-                # Peak Multiplier (17:00 - 20:00)[cite: 3]
+                # Peak Multiplier (17:00 - 20:00)
                 peak_spike = 1.5 if 17 <= hour <= 20 else 1.0
                 
                 # Calculate Final Traffic
@@ -68,6 +69,10 @@ def generate_dynamic_weekly_demand():
 
     # 5. Output for Universal App Processing
     df_new_week = pd.DataFrame(new_demand_rows)
+    
+    # --- THE FIX: Force the server to build the folder if it gets confused ---
+    os.makedirs('data/input', exist_ok=True)
+    
     df_new_week.to_csv('data/input/labor_demand_curve_sim.csv', index=False)
     print(f"✅ Concept-consistent demand generated for week starting {dates[0]}.")
 
