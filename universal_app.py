@@ -32,31 +32,26 @@ if start_workflow:
     
     with st.status("Running Aivena Pipeline...", expanded=True) as status:
         try:
-        
-# Inside your button click logic:
-            try:
-        st.write("📈 **Step 1:** Simulating Traffic Wave...")
-        
-        # Use sys.executable to ensure the correct Python environment is used
-        result = subprocess.run(
-            [sys.executable, "demand_gen.py"], 
-            capture_output=True, 
-            text=True
-        )
-
-        if result.returncode != 0:
-            st.error("🚨 **THE PIPELINE CRASHED!**")
-            st.code(result.stderr)
-            st.stop()
+            # STEP 1: DEMAND GENERATION
+            st.write("📈 **Step 1:** Simulating Traffic Wave & 48h Manager Baseline...")
             
-    except Exception as e:
-        st.error(f"General System Error: {e}")
+            result_step1 = subprocess.run(
+                [sys.executable, "demand_gen.py"], 
+                capture_output=True, 
+                text=True
+            )
+
+            if result_step1.returncode != 0:
+                st.error("🚨 **STEP 1 CRASHED!**")
+                st.code(result_step1.stderr)
+                st.stop()
             
             # STEP 2: AI OPTIMIZATION
             st.write("🧠 **Step 2:** Deep AI Optimization (12s per store)...")
             p_bar = st.progress(0)
             p_text = st.empty()
             
+            # Note: sys.executable ensures the solver uses the same cloud environment
             process = subprocess.Popen(
                 [sys.executable, "-u", "solver_engine.py", 
                  "--input", "data/input/labor_demand_curve_sim.csv", 
@@ -74,21 +69,36 @@ if start_workflow:
                         p_text.caption(f"✅ Optimized Store **{store_id}** ({current} of {total})")
             process.wait()
             
+            if process.returncode != 0:
+                st.error("🚨 **STEP 2 CRASHED!**")
+                st.stop()
+
+            # STEP 3: ROI ANALYSIS
             st.write("📊 **Step 3:** Executing Comparative ROI Analysis...")
-            subprocess.run(["python", "impact_analyzer.py", "--demand", "data/input/labor_demand_curve_sim.csv"], check=True)
-            time.sleep(1)
+            result_step3 = subprocess.run(
+                [sys.executable, "impact_analyzer.py", "--demand", "data/input/labor_demand_curve_sim.csv"],
+                capture_output=True,
+                text=True
+            )
             
+            if result_step3.returncode != 0:
+                st.error("🚨 **STEP 3 CRASHED!**")
+                st.code(result_step3.stderr)
+                st.stop()
+
+            time.sleep(1)
             status.update(label="✅ Pipeline Complete", state="complete", expanded=False)
             st.session_state['workflow_complete'] = True
             
         except Exception as e:
-            st.error(f"Critical error: {e}")
+            st.error(f"Critical System Error: {e}")
             st.stop()
 
 st.divider()
 
 # --- EXECUTIVE DASHBOARD ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Ensure paths are compatible with Linux servers
 OPT_DIAG = os.path.join(BASE_DIR, 'data', 'output', 'store_diagnostics_optimized.csv')
 LEG_DIAG = os.path.join(BASE_DIR, 'data', 'output', 'store_diagnostics_legacy.csv')
 
@@ -138,7 +148,10 @@ if st.session_state.get('workflow_complete', False) and os.path.exists(OPT_DIAG)
     st.subheader("📥 Final Executive Deliverables")
     d1, d2, d3, d4 = st.columns(4)
     with d1:
-        st.download_button("📂 Optimized Schedule", pd.read_csv('final_network_schedule.csv').to_csv(index=False), "final_network_schedule.csv", "text/csv")
+        # Check for schedule file before allowing download
+        sched_path = os.path.join(BASE_DIR, 'data', 'output', 'final_network_schedule.csv')
+        if os.path.exists(sched_path):
+            st.download_button("📂 Optimized Schedule", pd.read_csv(sched_path).to_csv(index=False), "final_network_schedule.csv", "text/csv")
     with d2:
         st.download_button("📊 Optimized Store Audit", df_opt.to_csv(index=False), "store_audit_optimized.csv", "text/csv")
     with d3:
