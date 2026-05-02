@@ -5,6 +5,7 @@ import os
 import time
 import plotly.express as px
 import plotly.graph_objects as go
+import sys
 
 st.set_page_config(page_title="Aivena | Full Network Analytics", layout="wide", page_icon="⚙️")
 
@@ -32,8 +33,19 @@ if start_workflow:
     with st.status("Running Aivena Pipeline...", expanded=True) as status:
         try:
             st.write("📈 **Step 1:** Simulating Traffic Wave & 48h Manager Baseline...")
-            subprocess.run(["python", "demand_gen.py"], check=True)
-            subprocess.run(["python", "legacy_gen.py"], check=True)
+            
+            # Run demand_gen.py and catch the EXACT error if it fails
+            demand_process = subprocess.run([sys.executable, "demand_gen.py"], capture_output=True, text=True)
+            if demand_process.returncode != 0:
+                st.error(f"🚨 Crash in demand_gen.py! Exact Error:\n```text\n{demand_process.stderr}\n```")
+                st.stop()
+
+            # Run legacy_gen.py and catch the EXACT error if it fails
+            legacy_process = subprocess.run([sys.executable, "legacy_gen.py"], capture_output=True, text=True)
+            if legacy_process.returncode != 0:
+                st.error(f"🚨 Crash in legacy_gen.py! Exact Error:\n```text\n{legacy_process.stderr}\n```")
+                st.stop()
+            
             time.sleep(1)
             
             # STEP 2: AI OPTIMIZATION
@@ -42,9 +54,9 @@ if start_workflow:
             p_text = st.empty()
             
             process = subprocess.Popen(
-                ["python", "-u", "solver_engine.py", 
-                 "--input", "labor_demand_curve_sim.csv", 
-                 "--output", "final_network_schedule.csv"], # <--- NEW NAME
+                [sys.executable, "-u", "solver_engine.py", 
+                 "--input", "data/input/labor_demand_curve_sim.csv", 
+                 "--output", "data/output/final_network_schedule.csv"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True
             )
             
