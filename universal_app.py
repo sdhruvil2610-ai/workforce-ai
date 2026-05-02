@@ -46,19 +46,24 @@ if start_workflow:
                 st.code(result_step1.stderr)
                 st.stop()
             
-            # STEP 2: AI OPTIMIZATION
+           # STEP 2: AI OPTIMIZATION
             st.write("🧠 **Step 2:** Deep AI Optimization (12s per store)...")
             p_bar = st.progress(0)
             p_text = st.empty()
             
-            # Note: sys.executable ensures the solver uses the same cloud environment
+            # We add stderr=subprocess.PIPE to catch the crash reason
             process = subprocess.Popen(
                 [sys.executable, "-u", "solver_engine.py", 
                  "--input", "data/input/labor_demand_curve_sim.csv", 
                  "--output", "data/output/final_network_schedule.csv"],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, # Added this
+                text=True, 
+                bufsize=1, 
+                universal_newlines=True
             )
             
+            # This part handles the progress bar
             for line in iter(process.stdout.readline, ''):
                 if "PROGRESS:" in line:
                     parts = line.strip().split(":")
@@ -67,10 +72,12 @@ if start_workflow:
                         current, total, store_id = int(fraction[0]), int(fraction[1]), parts[2]
                         p_bar.progress(current / total)
                         p_text.caption(f"✅ Optimized Store **{store_id}** ({current} of {total})")
-            process.wait()
             
+            # After the loop, check for errors
+            stdout, stderr = process.communicate()
             if process.returncode != 0:
                 st.error("🚨 **STEP 2 CRASHED!**")
+                st.code(stderr) # THIS WILL SHOW THE REAL ERROR
                 st.stop()
 
             # STEP 3: ROI ANALYSIS
