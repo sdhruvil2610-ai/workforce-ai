@@ -12,10 +12,14 @@ OUTPUT_FILE = os.path.join(BASE_DIR, 'optimized_schedule.csv')
 PENALTY_RATE = 10000 
 VOLATILITY_BUFFER = 1.0
 
-def load_file(name):
-    path = os.path.join(INPUT_DIR, name) if not os.path.isabs(name) else name
-    if os.path.exists(path): return pd.read_csv(path)
-    raise FileNotFoundError(f"Missing {path}")
+def load_file(filename):
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    # This joins the folder and the filename correctly
+    path = os.path.join(BASE_DIR, 'data', 'input', filename) 
+    
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Missing {path}")
+    return pd.read_csv(path)
 
 def get_eligible_shifts(role):
     if 'Supervisor' in role:
