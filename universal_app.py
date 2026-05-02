@@ -32,23 +32,23 @@ if start_workflow:
     
     with st.status("Running Aivena Pipeline...", expanded=True) as status:
         try:
-            st.write("📈 **Step 1:** Simulating Traffic Wave & 48h Manager Baseline...")
-            
-            # Run demand_gen.py and catch the EXACT error if it fails
-            # Change ['python', 'demand_gen.py'] to [sys.executable, 'demand_gen.py']
-result = subprocess.run([sys.executable, 'demand_gen.py'], capture_output=True, text=True)
+        
+# Inside your button click logic:
+st.write("📈 **Step 1:** Simulating Traffic Wave...")
+
+# We use sys.executable to ensure we use the SAME python environment
+# We use capture_output=True to grab the REAL error message
+result = subprocess.run(
+    [sys.executable, "demand_gen.py"], 
+    capture_output=True, 
+    text=True
+)
 
 if result.returncode != 0:
-    st.error(f"Error: {result.stderr}") # This will show you the REAL error if it fails again
+    st.error("🚨 **THE PIPELINE CRASHED!**")
+    st.info("Here is the exact technical reason from the server:")
+    st.code(result.stderr) # This prints the actual Python error (Traceback)
     st.stop()
-
-            # Run legacy_gen.py and catch the EXACT error if it fails
-            legacy_process = subprocess.run([sys.executable, "legacy_gen.py"], capture_output=True, text=True)
-            if legacy_process.returncode != 0:
-                st.error(f"🚨 Crash in legacy_gen.py! Exact Error:\n```text\n{legacy_process.stderr}\n```")
-                st.stop()
-            
-            time.sleep(1)
             
             # STEP 2: AI OPTIMIZATION
             st.write("🧠 **Step 2:** Deep AI Optimization (12s per store)...")
